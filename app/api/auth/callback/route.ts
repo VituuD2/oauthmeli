@@ -36,7 +36,25 @@ export async function GET(request: NextRequest) {
 
     if (!tokenResponse.ok) return NextResponse.json(data, { status: 400 });
 
-    return NextResponse.json({ status: 'Sucesso com PKCE!', user_id: data.user_id });
+    // 2. Teste de Conexão: Busca dados do usuário para validar o Access Token
+    const userResponse = await fetch('https://api.mercadolibre.com/users/me', {
+      headers: { 'Authorization': `Bearer ${data.access_token}` }
+    });
+    
+    const userData = await userResponse.json();
+
+    return NextResponse.json({
+      status: 'Conectado',
+      user: {
+        id: userData.id,
+        nickname: userData.nickname,
+        email: userData.email
+      },
+      tokens: {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token
+      }
+    });
   } catch (error) {
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
