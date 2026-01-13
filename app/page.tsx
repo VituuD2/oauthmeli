@@ -1,30 +1,32 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { generateCodeVerifier, generateCodeChallenge } from '@/utils/pkce';
+import Cookies from 'js-cookie';
 
 export default function HomePage() {
   const [mounted, setMounted] = useState(false);
   const [connData, setConnData] = useState<any>(null);
 
-  // Garante que o ID seja lido apenas no cliente para evitar 'undefined' no SSR
   useEffect(() => { setMounted(true); }, []);
 
-  const appId = process.env.NEXT_PUBLIC_MELI_APP_ID || '8074300052363571';
-  const redirectUri = encodeURIComponent(process.env.NEXT_PUBLIC_MELI_REDIRECT_URI || '');
-  const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${appId}&redirect_uri=${redirectUri}`;
+  const handleLogin = async () => {
+    // 1. Gera as chaves PKCE
+    const verifier = generateCodeVerifier();
+    const challenge = await generateCodeChallenge(verifier);
 
-  const handleDisconnect = async () => {
-    if (!connData?.tokens?.access_token) return;
+    // 2. Salva o verifier em um cookie para o backend ler depois
+    Cookies.set('meli_code_verifier', verifier, { expires: 1/144 }); // expira em 10 min
+
+    const appId = process.env.NEXT_PUBLIC_MELI_APP_ID || '8074300052363571';
+    const redirectUri = encodeURIComponent(process.env.NEXT_PUBLIC_MELI_REDIRECT_URI || '');
     
-    const res = await fetch('/api/auth/meli/callback', {
-      method: 'POST',
-      body: JSON.stringify({ access_token: connData.tokens.access_token })
-    });
-    
-    if (res.ok) {
-      alert("Desconectado do Mercado Livre!");
-      setConnData(null);
-    }
+    // 3. Monta a URL com challenge e o método S256
+    const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${appId}&redirect_uri=${redirectUri}&code_challenge=${challenge}&code_challenge_method=S256`;
+
+    window.location.href = authUrl;
   };
+
+  // ... (mantenha a função handleDisconnect do código anterior)
 
   if (!mounted) return null;
 
@@ -33,18 +35,15 @@ export default function HomePage() {
       <h1>Meli Integration Test</h1>
       
       {!connData ? (
-        <a href={authUrl} style={{ background: '#FFE600', padding: '15px', borderRadius: '8px', color: '#2D3277', fontWeight: 'bold', textDecoration: 'none' }}>
-          Conectar com Mercado Livre
-        </a>
+        <button 
+          onClick={handleLogin} 
+          style={{ background: '#FFE600', padding: '15px', border: 'none', borderRadius: '8px', color: '#2D3277', fontWeight: 'bold', cursor: 'pointer' }}
+        >
+          Conectar com Mercado Livre (PKCE)
+        </button>
       ) : (
         <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '10px', display: 'inline-block' }}>
-          <p style={{ color: 'green', fontWeight: 'bold' }}>● {connData.status}</p>
-          <p>Usuário: <strong>{connData.user.nickname}</strong></p>
-          <p>ID: {connData.user.id}</p>
-          
-          <button onClick={handleDisconnect} style={{ marginTop: '20px', padding: '10px', background: '#ff4444', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-            Desconectar App (Revogar Permissão)
-          </button>
+          {/* ... resto do seu layout de sucesso */}
         </div>
       )}
     </div>
