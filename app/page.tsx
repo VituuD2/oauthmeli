@@ -33,7 +33,7 @@ export default function HomePage() {
     }
     setMsg('Verificando...');
     try {
-      const res = await fetch('https://api.mercadolibre.com/users/me', {
+      const res = await fetch('/api/users/me', {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
       const data = await res.json();
@@ -101,7 +101,7 @@ export default function HomePage() {
         <input 
           type="text" 
           value={accessToken}
-          onChange={(e) => setAccessToken(e.target.value)}
+          onChange={(e) => setAccessToken(e.target.value.trim())}
           placeholder="Cole seu access_token aqui..."
           style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
         />
