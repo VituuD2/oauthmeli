@@ -66,8 +66,20 @@ export async function POST(request: Request) {
   const clientId = process.env.NEXT_PUBLIC_MELI_APP_ID || '8074300052363571';
 
   try {
-    // Segundo a doc do MeLi, a revogação invalida o grant entre app e usuário
-    const response = await fetch(`https://api.mercadolibre.com/users/me/applications/${clientId}`, {
+    // 1. Obter ID do usuário para garantir que o endpoint de revogação funcione (o alias 'me' pode falhar)
+    const userResponse = await fetch('https://api.mercadolibre.com/users/me', {
+      headers: { 'Authorization': `Bearer ${access_token}` }
+    });
+    
+    if (!userResponse.ok) {
+       const userErr = await userResponse.json();
+       return NextResponse.json({ error: userErr, stage: 'fetch_user' }, { status: 400 });
+    }
+    
+    const userData = await userResponse.json();
+
+    // 2. Revogar permissão usando o ID explícito
+    const response = await fetch(`https://api.mercadolibre.com/users/${userData.id}/applications/${clientId}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${access_token}` }
     });
